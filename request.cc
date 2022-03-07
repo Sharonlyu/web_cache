@@ -42,8 +42,17 @@ void HTTPRequest::ingestRequestLine(istream& instream) {
   server.erase(pos);
 }
 
+
 void HTTPRequest::ingestHeader(istream& instream, const string& clientIPAddress) {
-  requestHeader.ingestHeader(instream);
+    requestHeader.ingestHeader(instream);
+    
+    if (!containsName("x-forwarded-proto")) requestHeader.addHeader("x-forwared-proto","http");
+    string forwardedForStr;
+    forwardedForStr += requestHeader.getValueAsString("x-forwarded-for");
+    if (!containsName("x-forwarded-for")) {
+        forwardedForStr += ", " + clientIPAddress;
+    }
+    requestHeader.addHeader("x-forwarded-for", forwardedForStr);
 }
 
 bool HTTPRequest::containsName(const string& name) const {
@@ -54,6 +63,7 @@ void HTTPRequest::ingestPayload(istream& instream) {
   if (getMethod() != "POST") return;
   payload.ingestPayload(requestHeader, instream);
 }
+
 
 ostream& operator<<(ostream& os, const HTTPRequest& rh) {
   const string& path = rh.path;

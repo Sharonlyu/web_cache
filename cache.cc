@@ -36,7 +36,7 @@
 #include "string-utils.h"
 using namespace std;
 
-HTTPCache::HTTPCache(): maxAge(-1) {
+HTTPCache::HTTPCache():  lockArr(), maxAge(-1) {
   cacheDirectory = getCacheDirectory();
   ensureDirectoryExists(cacheDirectory);
 }
@@ -72,6 +72,7 @@ bool HTTPCache::shouldCache(const HTTPRequest& request, const HTTPResponse& resp
 bool HTTPCache::containsCacheEntry(const HTTPRequest& request, HTTPResponse& response) const {
   if (maxAge == 0) return false; // maxAge of 0 means nothing is in the cache and we're not caching anything
   if (request.getMethod() != "GET") return false;
+  
   string requestHash = hashRequestAsString(request);
   bool exists = cacheEntryExists(requestHash);
   if (!exists) return false;
@@ -105,7 +106,7 @@ bool HTTPCache::containsCacheEntry(const HTTPRequest& request, HTTPResponse& res
     return false;
   }
 }
-
+//lock when checking contains or adding entry
 static string kCreateHeader = "created@";
 static string kExpirationHeader = "expires@";
 void HTTPCache::cacheEntry(const HTTPRequest& request, const HTTPResponse& response) {
@@ -129,11 +130,16 @@ void HTTPCache::cacheEntry(const HTTPRequest& request, const HTTPResponse& respo
 
 size_t HTTPCache::hashRequest(const HTTPRequest& request) const {
   hash<string> hasher;
+  
   return hasher(serializeRequest(request));  
 }
-
+//m3
 string HTTPCache::hashRequestAsString(const HTTPRequest& request) const {
   ostringstream oss;
+  //size_t hashCode = hashRequest(request);
+  //lockArr[hashCode % numLocks].lock();
+  
+  // cout<<"hash code" <<hashCode<<"get lock"<<endl;
   oss << hashRequest(request);
   return oss.str();
 }

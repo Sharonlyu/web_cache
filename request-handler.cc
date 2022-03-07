@@ -9,43 +9,128 @@
 #include <socket++/sockstream.h> // for sockbuf, iosockstream
 #include "ostreamlock.h"
 #include "watchset.h"
+#include "cache.h"
+
+
 using namespace std;
+static const string kDefaultProtocol = "HTTP/1.0";
+const size_t kTimeout = 5;
+const size_t kBridgeBufferSize = 1 << 16;
+
+
 
 HTTPRequestHandler::HTTPRequestHandler() {
-  handlers["GET"] = &HTTPRequestHandler::handleGETRequest;
-  // add handlers for POST, HEAD, and CONNECT
+  handlers["GET"] = &HTTPRequestHandler::handleRequest;
+  handlers["POST"] = &HTTPRequestHandler::handleRequest;
+  handlers["HEAD"] = &HTTPRequestHandler::handleRequest;
+  handlers["CONNECT"] = &HTTPRequestHandler::handleCONNECTRequest;
+  strikeSet.addFrom("blocked-domains.txt");
 }
-
+//ingests requests from the client,
+//establishes connections to the origin servers,
+//passes the requests on to the origin servers,
+//waits for these origin servers to respond, and then passes their responses back to the clients.
+//where do we use service request
 void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection) noexcept {
   sockbuf sb(connection.first);
   iosockstream ss(&sb);
   try {
     HTTPRequest request;
     request.ingestRequestLine(ss);
-    request.ingestHeader(ss, connection.second);
+    request.ingestHeader(ss, connection.second);//connection.secondis IP
     request.ingestPayload(ss);
+
+    size_t hashCode = cache.hashRequest(request);
+    lock_guard<mutex> hashLockLg(cache.lockArr[hashCode % numLocks]);
+
+    if (strikeSet.contains(request.getServer())) {
+        
+        HTTPResponse response;
+        response.setResponseCode(403);
+        response.setProtocol(kDefaultProtocol);
+        response.setPayload("Forbidden Content");
+        ss << response << flush;
+
+    }
+    
     auto found = handlers.find(request.getMethod());
     if (found == handlers.cend()) throw UnsupportedMethodExeption(request.getMethod());
     (this->*(found->second))(request, ss);
+    
   } catch (const HTTPBadRequestException &bre) {
     handleBadRequestError(ss, bre.what());
+    
   } catch (const UnsupportedMethodExeption& ume) {
     handleUnsupportedMethodError(ss, ume.what());
+    
   } catch (...) {}
+   
+  
 }
 
-static const string kDefaultProtocol = "HTTP/1.0";
-void HTTPRequestHandler::handleGETRequest(const HTTPRequest& request, class iosockstream& ss) {
-  HTTPResponse response;
-  response.setResponseCode(HTTPStatus::OK);
-  response.setProtocol(kDefaultProtocol);
-  response.setPayload("You're writing a proxy!");
-  ss << response;
-  ss.flush();
+int HTTPRequestHandler::createSocket(const HTTPRequest& request) {
+    int socketD = createClientSocket(request.getServer(), request.getPort());
+        
+    if (socketD == kClientSocketError) {
+        cerr << "Server could not be reached."<<endl;
+        cerr << "Abborting"<<endl;
+
+    }
+    return socketD;
+    
+    /**  
+    } catch (const HTTPException& e ) {
+        handleError(ss, kDefaultProtocol, 504, e.what());
+ 
+    }//proxy exception
+    */
+       
+        
+
+
+
 }
 
-const size_t kTimeout = 5;
-const size_t kBridgeBufferSize = 1 << 16;
+
+void HTTPRequestHandler::handleRequest(const HTTPRequest& request, class iosockstream& ss) {
+    //lock hash operation
+    //size_t hashCode = cache.hashRequest(request);
+    //lock_guard<mutex> hashLockLg(cache.lockArr[hashCode % numLocks]);
+    
+    HTTPResponse response;
+    if (cache.containsCacheEntry(request, response)){
+        cout<<"fetching cache"<<endl;
+        ss << response;//??
+        ss.flush();
+        return;
+
+    }
+   
+    int socketD = createSocket(request);
+    sockbuf socketBuffer(socketD);
+    iosockstream clientStream(&socketBuffer);
+    
+    clientStream << request;
+    clientStream.flush();
+    
+    response.ingestResponseHeader(clientStream);
+    if(request.getMethod() != "HEAD") response.ingestPayload(clientStream);
+
+    if (cache.shouldCache(request, response)){
+        cout<<"caching this"<<endl;
+        cache.cacheEntry(request, response);
+    }
+    ss << response;
+    ss.flush();
+}
+
+
+
+
+
+
+
+
 void HTTPRequestHandler::manageClientServerBridge(iosockstream& client, iosockstream& server) {
   // get embedded descriptors leading to client and origin server
   int clientfd = client.rdbuf()->sd();
@@ -77,11 +162,43 @@ void HTTPRequestHandler::manageClientServerBridge(iosockstream& client, iosockst
        continue;
     }
     to.write(buffer, 1);
-    // TODO: additional code that you'll write to read all available bytes from the
+    // read all available bytes from the
     // source and transport them to the other side of the bridge
+    
+    while (true) {
+        size_t bytesRead = from.readsome(buffer, sizeof(buffer));
+        
+        if (bytesRead == 0) break;
+        if (from.eof() || from.fail() || from.gcount() == 0) {
+            watchset.remove(fd);
+            streams.erase(fd);
+            break;
+        }
+        to.write(buffer, bytesRead);
+        
+
+    }
+    
+    
     to.flush();
   }
   cout << oslock << buildTunnelString(client, server) << "Tearing down HTTPS tunnel." << endl << osunlock;
+}
+
+void HTTPRequestHandler::handleCONNECTRequest(const HTTPRequest& request, class iosockstream& clientStream) {
+   
+   int socketD = createSocket(request);    
+   sockbuf socketBuffer(socketD);
+   iosockstream serverStream(&socketBuffer);
+        
+   HTTPResponse response;  
+   response.setResponseCode(HTTPStatus::OK);
+   response.setProtocol(kDefaultProtocol);
+   
+   clientStream << response;//first handshake
+   clientStream.flush();
+   
+   manageClientServerBridge(clientStream, serverStream);  
 }
 
 string HTTPRequestHandler::buildTunnelString(iosockstream& from, iosockstream& to) const {

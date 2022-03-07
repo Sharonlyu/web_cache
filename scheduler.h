@@ -16,12 +16,14 @@ using reference::ThreadPool;
 
 class HTTPProxyScheduler {
  public:
+  HTTPProxyScheduler();
   void clearCache() { requestHandler.clearCache(); }
   void setCacheMaxAge(long maxAge) { requestHandler.setCacheMaxAge(maxAge); }
   void setProxy(const std::string& server, unsigned short port);
   void scheduleRequest(int clientfd, const std::string& clientIPAddr);
   
  private:
+  ThreadPool pool; 
   HTTPRequestHandler requestHandler;
 };
 

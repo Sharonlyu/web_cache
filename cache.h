@@ -14,6 +14,8 @@
 #include "request.h"
 #include "response.h"
 
+
+static const int numLocks = 997;
 class HTTPCache {
  public:
 
@@ -43,10 +45,13 @@ class HTTPCache {
  * a cacheable item is allowed to remain in the cache from the time it was placed there.
  */
   void setMaxAge(long maxAge) { this->maxAge = maxAge; }
+  size_t hashRequest(const HTTPRequest& request) const;
+  std::mutex lockArr[numLocks];
   
  private:
+  
   std::string getCacheDirectory() const;
-  size_t hashRequest(const HTTPRequest& request) const;
+  
   std::string hashRequestAsString(const HTTPRequest& request) const;
   std::string serializeRequest(const HTTPRequest& request) const;
   bool cacheEntryExists(const std::string& requestHash) const;

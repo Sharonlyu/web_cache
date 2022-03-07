@@ -13,6 +13,10 @@
 #include <map>
 #include "request.h"
 #include "response.h"
+#include "header.h"
+#include "client-socket.h"
+#include "cache.h"
+#include "strike-set.h"
 
 class HTTPRequestHandler {
  public:
@@ -22,10 +26,15 @@ class HTTPRequestHandler {
   void setCacheMaxAge(long maxAge);
 
  private:
+    StrikeSet strikeSet;
+    HTTPCache cache;
+    
   typedef void (HTTPRequestHandler::*handlerMethod)(const HTTPRequest& request, class iosockstream& ss);
   std::map<std::string, handlerMethod> handlers;
-
-  void handleGETRequest(const HTTPRequest& request, class iosockstream& ss);
+    int createSocket(const HTTPRequest& request);
+    void addHeaders(const HTTPRequest& request);
+  void handleRequest(const HTTPRequest& request, class iosockstream& ss);
+  void handleCONNECTRequest(const HTTPRequest& request, class iosockstream& clientStream);
   
   void manageClientServerBridge(iosockstream& client, iosockstream& server);
   std::string buildTunnelString(iosockstream& from, iosockstream& to) const;
