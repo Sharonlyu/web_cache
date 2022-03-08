@@ -8,7 +8,7 @@
 #include <utility>
 using namespace std;
 
-size_t numThreads = 1;//64
+size_t numThreads = 64;//64
 HTTPProxyScheduler::HTTPProxyScheduler(): pool(numThreads){
     
 }
