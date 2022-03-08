@@ -46,13 +46,17 @@ void HTTPRequest::ingestRequestLine(istream& instream) {
 void HTTPRequest::ingestHeader(istream& instream, const string& clientIPAddress) {
     requestHeader.ingestHeader(instream);
     
-    if (!containsName("x-forwarded-proto")) requestHeader.addHeader("x-forwared-proto","http");
+    // if (!containsName("x-forwarded-proto"))
+    
+
     string forwardedForStr;
     forwardedForStr += requestHeader.getValueAsString("x-forwarded-for");
-    if (!containsName("x-forwarded-for")) {
+    if (containsName("x-forwarded-for")) {
         forwardedForStr += ", " + clientIPAddress;
     }
     requestHeader.addHeader("x-forwarded-for", forwardedForStr);
+    requestHeader.addHeader("x-forwared-proto","http");
+    cout<<"add x forwarded proto"<<endl;
 }
 
 bool HTTPRequest::containsName(const string& name) const {
