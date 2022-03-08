@@ -99,7 +99,7 @@ void HTTPRequestHandler::handleRequest(const HTTPRequest& request, class iosocks
     if(request.getMethod() != "HEAD") response.ingestPayload(clientStream);
 
     if (cache.shouldCache(request, response)){
-        cout<<"caching this"<<endl;
+        
         cache.cacheEntry(request, response);
     }
     ss << response;
