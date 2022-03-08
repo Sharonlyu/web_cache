@@ -84,7 +84,7 @@ class HTTPRequest {
   const std::string& getPath() const { return path; }
   const std::string& getProtocol() const { return protocol; }
 
-  void modifyHeaders();
+  
 
 /**
  * Returns true if and only if the supplied, case-insensitive

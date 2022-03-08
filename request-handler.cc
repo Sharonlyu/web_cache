@@ -26,22 +26,16 @@ HTTPRequestHandler::HTTPRequestHandler() {
   handlers["CONNECT"] = &HTTPRequestHandler::handleCONNECTRequest;
   strikeSet.addFrom("blocked-domains.txt");
 }
-//ingests requests from the client,
-//establishes connections to the origin servers,
-//passes the requests on to the origin servers,
-//waits for these origin servers to respond, and then passes their responses back to the clients.
-//where do we use service request
+
 void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection) noexcept {
   sockbuf sb(connection.first);
   iosockstream ss(&sb);
   try {
     HTTPRequest request;
     request.ingestRequestLine(ss);
-    request.ingestHeader(ss, connection.second);//connection.secondis IP
+    request.ingestHeader(ss, connection.second);
     request.ingestPayload(ss);
 
-    //size_t hashCode = cache.hashRequest(request);
-    //lock_guard<mutex> hashLockLg(cache.lockArr[hashCode % numLocks]);
 
     if (strikeSet.contains(request.getServer())) {
         
@@ -78,17 +72,6 @@ int HTTPRequestHandler::createSocket(const HTTPRequest& request) {
     }
     return socketD;
     
-    /**  
-    } catch (const HTTPException& e ) {
-        handleError(ss, kDefaultProtocol, 504, e.what());
- 
-    }//proxy exception
-    */
-       
-        
-
-
-
 }
 
 
@@ -99,7 +82,6 @@ void HTTPRequestHandler::handleRequest(const HTTPRequest& request, class iosocks
     
     HTTPResponse response;
     if (cache.containsCacheEntry(request, response)){
-        cout<<"fetching cache"<<endl;
         ss << response;//??
         ss.flush();
         return;
