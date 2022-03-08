@@ -15,9 +15,10 @@ HTTPProxyScheduler::HTTPProxyScheduler(): pool(numThreads){
 
 
 void HTTPProxyScheduler::scheduleRequest(int clientfd, const string& clientIPAddress) {
-    pool.schedule([this, clientfd, &clientIPAddress] {
+    pool.schedule([this, clientfd, clientIPAddress] {
                       requestHandler.serviceRequest(make_pair(clientfd, clientIPAddress));
                   });
+    
 }
 
 void HTTPProxyScheduler::setProxy(const std::string& server, unsigned short port) {

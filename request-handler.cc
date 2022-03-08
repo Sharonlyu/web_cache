@@ -40,8 +40,8 @@ void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection) noe
     request.ingestHeader(ss, connection.second);//connection.secondis IP
     request.ingestPayload(ss);
 
-    size_t hashCode = cache.hashRequest(request);
-    lock_guard<mutex> hashLockLg(cache.lockArr[hashCode % numLocks]);
+    //size_t hashCode = cache.hashRequest(request);
+    //lock_guard<mutex> hashLockLg(cache.lockArr[hashCode % numLocks]);
 
     if (strikeSet.contains(request.getServer())) {
         
@@ -94,8 +94,8 @@ int HTTPRequestHandler::createSocket(const HTTPRequest& request) {
 
 void HTTPRequestHandler::handleRequest(const HTTPRequest& request, class iosockstream& ss) {
     //lock hash operation
-    //size_t hashCode = cache.hashRequest(request);
-    //lock_guard<mutex> hashLockLg(cache.lockArr[hashCode % numLocks]);
+    size_t hashCode = cache.hashRequest(request);
+    lock_guard<mutex> hashLockLg(cache.lockArr[hashCode % numLocks]);
     
     HTTPResponse response;
     if (cache.containsCacheEntry(request, response)){
