@@ -167,7 +167,7 @@ void HTTPRequestHandler::manageClientServerBridge(iosockstream& client, iosockst
   cout << oslock << buildTunnelString(client, server) << "Tearing down HTTPS tunnel." << endl << osunlock;
 }
 
-void HTTPRequestHandler::handleCONNECTRequest(const HTTPRequest& request, class iosockstream& clientStream) {
+void HTTPRequestHandler::handleCONNECTRequest(const HTTPRequest& request, class iosockstream& ss) {
    
    int socketD = createSocket(request);    
    sockbuf socketBuffer(socketD);
@@ -177,10 +177,10 @@ void HTTPRequestHandler::handleCONNECTRequest(const HTTPRequest& request, class 
    response.setResponseCode(HTTPStatus::OK);
    response.setProtocol(kDefaultProtocol);
    
-   clientStream << response;//first handshake
-   clientStream.flush();
+   ss << response;//first handshake
+   ss.flush();
    
-   manageClientServerBridge(clientStream, serverStream);  
+   manageClientServerBridge(ss, serverStream);  
 }
 
 string HTTPRequestHandler::buildTunnelString(iosockstream& from, iosockstream& to) const {
