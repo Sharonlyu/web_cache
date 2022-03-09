@@ -8,16 +8,20 @@
 #include <utility>
 using namespace std;
 
-size_t numThreads = 64;//64
+size_t numThreads = 64;
 HTTPProxyScheduler::HTTPProxyScheduler(): pool(numThreads){
     
 }
 
 
 void HTTPProxyScheduler::scheduleRequest(int clientfd, const string& clientIPAddress) {
+    
     pool.schedule([this, clientfd, clientIPAddress] {
                       requestHandler.serviceRequest(make_pair(clientfd, clientIPAddress));
                   });
+    
+
+    
     
 }
 

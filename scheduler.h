@@ -23,8 +23,9 @@ class HTTPProxyScheduler {
   void scheduleRequest(int clientfd, const std::string& clientIPAddr);
   
  private:
-  ThreadPool pool; 
+  
   HTTPRequestHandler requestHandler;
+  ThreadPool pool; 
 };
 
 #endif
