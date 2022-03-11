@@ -82,7 +82,7 @@ void HTTPRequestHandler::handleRequest(const HTTPRequest& request, class iosocks
     
     HTTPResponse response;
     if (cache.containsCacheEntry(request, response)){
-        ss << response;//??
+        ss << response;
         ss.flush();
         return;
 
