@@ -1,0 +1,19 @@
+# TSan detects a race when calling gethostbyname_r:
+#      WARNING: ThreadSanitizer: data race (pid=1153064)
+#        Write of size 8 at 0x7b240000fff0 by thread T20 (mutexes: write M171):
+#          #0 realloc <null> (proxy_tsan+0x42c91f)
+#          #1 __libc_dynarray_emplace_enlarge /build/glibc-eX1tMB/glibc-2.31/malloc/dynarray_emplace_enlarge.c:65:17 (libc.so.6+0xa1d90)
+#          #2 createClientSocket(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned short) client-socket.cc:24:3 (proxy_tsan+0x53d399)
+# This is either a bug in glibc or a problem with underinstrumentation where
+# TSan doesn't understand the synchronization being used. I haven't had time to
+# figure out which is the case, and either way, there's probably not much we
+# can do, so let's suppress the warning.
+
+race:createClientSocket
+
+# debugging symbols are stripped in the sample solution, so we'll also suppress
+# __libc_dynarray_emplace_enlarge even though this isn't ideal, since
+# createClientSocket isn't there
+race:__libc_dynarray_emplace_enlarge
+
+race:HTTPProxy::~HTTPProxy
